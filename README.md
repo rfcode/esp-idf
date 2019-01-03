@@ -1,3 +1,29 @@
+# Apache License Notice of Modification
+                                                                      
+This file has been modified by RFCode.
+                                                                        
+Copyright (C) 2019. RFCode, Inc.
+                                                                        
+All rights reserved.
+                                                                        
+This software is protected by copyright laws of the United States
+and of foreign countries. This material may also be protected by
+patent laws of the United States and of foreign countries.
+                                                                        
+This software is furnished under a license agreement and/or a
+nondisclosure agreement and may only be used or copied in accordance
+with the terms of those agreements.
+                                                                        
+The mere transfer of this software does not imply any licenses of trade
+secrets, proprietary technology, copyrights, patents, trademarks, or
+any other form of intellectual property whatsoever.
+                                                                        
+RFCode, Inc. retains all ownership rights.
+
+# All code in this repo that is modified by RFCode must have the above text prepended.
+
+The Apache 2.0 License section 4 requires that all redistributed code have a prominent notice stating that it has been modified.  Furthermore, RFCode has decided to include a copyright notice afterwards.
+
 # Espressif IoT Development Framework
 
 [![Documentation Status](https://readthedocs.com/projects/espressif-esp-idf/badge/?version=latest)](https://docs.espressif.com/projects/esp-idf/en/latest/?badge=latest)
