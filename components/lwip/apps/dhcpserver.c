@@ -676,7 +676,12 @@ static void send_ack(struct dhcps_msg *m, u16_t len)
 #endif
 
     if (SendAck_err_t == ERR_OK) {
-        dhcps_cb(m->yiaddr);
+        if (NULL == dhcps_cb) {
+            DHCPS_LOG("dhcps: NULL dhcps_cb\n");
+        }
+        else {
+            dhcps_cb(m->yiaddr);
+        }
     }
 
     if (p->ref != 0) {

@@ -94,6 +94,7 @@ esp_err_t system_event_eth_connected_handle_default(system_event_t *event)
 
     tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
 
+#if 0
     tcpip_adapter_dhcpc_get_status(TCPIP_ADAPTER_IF_ETH, &status);
 
     if (status == TCPIP_ADAPTER_DHCP_INIT) {
@@ -115,6 +116,7 @@ esp_err_t system_event_eth_connected_handle_default(system_event_t *event)
             ESP_LOGE(TAG, "invalid static ip");
         }
     }
+#endif
 
     return ESP_OK;
 }

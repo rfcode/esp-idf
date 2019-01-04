@@ -92,6 +92,11 @@ static void tcpip_adapter_dhcps_cb(u8_t client_ip[4])
                 client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
     system_event_t evt;
     evt.event_id = SYSTEM_EVENT_AP_STAIPASSIGNED;
+    evt.event_info.sta_ipassigned.client_ip[0] = client_ip[0];
+    evt.event_info.sta_ipassigned.client_ip[1] = client_ip[1];
+    evt.event_info.sta_ipassigned.client_ip[2] = client_ip[2];
+    evt.event_info.sta_ipassigned.client_ip[3] = client_ip[3];
+
     esp_event_send(&evt);
 }
 
@@ -107,9 +112,10 @@ void tcpip_adapter_init(void)
         memset(esp_ip, 0, sizeof(tcpip_adapter_ip_info_t)*TCPIP_ADAPTER_IF_MAX);
         memset(esp_ip_old, 0, sizeof(tcpip_adapter_ip_info_t)*TCPIP_ADAPTER_IF_MAX);
 
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_AP].ip, 192, 168 , 4, 1);
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_AP].gw, 192, 168 , 4, 1);
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_AP].netmask, 255, 255 , 255, 0);
+
+        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 192, 168 , 4, 1);
+        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 192, 168 , 4, 1);
+        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
         ret = sys_sem_new(&api_sync_sem, 0);
         if (ERR_OK != ret) {
             ESP_LOGE(TAG, "tcpip adatper api sync sem init fail");
@@ -193,7 +199,7 @@ esp_err_t tcpip_adapter_start(tcpip_adapter_if_t tcpip_if, uint8_t *mac, tcpip_a
 #endif
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_AP) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
         netif_set_up(esp_netif[tcpip_if]);
 
         if (dhcps_status == TCPIP_ADAPTER_DHCP_INIT) {
@@ -253,12 +259,12 @@ esp_err_t tcpip_adapter_stop(tcpip_adapter_if_t tcpip_if)
         return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_AP) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
         dhcps_stop(esp_netif[tcpip_if]);    // TODO: dhcps checks status by its self
         if (TCPIP_ADAPTER_DHCP_STOPPED != dhcps_status) {
             dhcps_status = TCPIP_ADAPTER_DHCP_INIT;
         }
-    } else if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+    } else if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
         dhcp_release(esp_netif[tcpip_if]);
         dhcp_stop(esp_netif[tcpip_if]);
         dhcp_cleanup(esp_netif[tcpip_if]);
@@ -285,7 +291,7 @@ esp_err_t tcpip_adapter_up(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_up_api);
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA ||  tcpip_if == TCPIP_ADAPTER_IF_ETH ) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*||  tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
         if (esp_netif[tcpip_if] == NULL) {
             return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
         }
@@ -310,7 +316,7 @@ esp_err_t tcpip_adapter_down(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_down_api);
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA ||  tcpip_if == TCPIP_ADAPTER_IF_ETH ) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*||  tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
         if (esp_netif[tcpip_if] == NULL) {
             return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
         }
@@ -401,13 +407,13 @@ esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_AP) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
         tcpip_adapter_dhcps_get_status(tcpip_if, &status);
 
         if (status != TCPIP_ADAPTER_DHCP_STOPPED) {
             return ESP_ERR_TCPIP_ADAPTER_DHCP_NOT_STOPPED;
         }
-    } else if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH ) {
+    } else if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
         tcpip_adapter_dhcpc_get_status(tcpip_if, &status);
 
         if (status != TCPIP_ADAPTER_DHCP_STOPPED) {
@@ -426,7 +432,7 @@ esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
 
     if (p_netif != NULL && netif_is_up(p_netif)) {
         netif_set_addr(p_netif, &ip_info->ip, &ip_info->netmask, &ip_info->gw);
-        if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+        if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
             if (!(ip4_addr_isany_val(ip_info->ip) || ip4_addr_isany_val(ip_info->netmask) || ip4_addr_isany_val(ip_info->gw))) {
                 system_event_t evt;
                 if (tcpip_if == TCPIP_ADAPTER_IF_STA) {
@@ -721,7 +727,7 @@ esp_err_t tcpip_adapter_set_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_
     ESP_LOGD(TAG, "set dns if=%d type=%d dns=%x", tcpip_if, type, dns->ip.u_addr.ip4.addr);
     dns->ip.type = IPADDR_TYPE_V4;
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
         dns_setserver(type, &(dns->ip));
     } else {
         if (type != TCPIP_ADAPTER_DNS_MAIN) {
@@ -765,7 +771,7 @@ esp_err_t tcpip_adapter_get_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
         dns->ip = dns_getserver(type);
     } else {
         dns->ip.u_addr.ip4 = dhcps_dns_getserver();
@@ -793,7 +799,7 @@ esp_err_t tcpip_adapter_dhcps_start(tcpip_adapter_if_t tcpip_if)
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcps_start_api);
 
     /* only support ap now */
-    if (tcpip_if != TCPIP_ADAPTER_IF_AP || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if (tcpip_if != TCPIP_ADAPTER_IF_ETH || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
         ESP_LOGD(TAG, "dhcp server invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
@@ -830,7 +836,7 @@ esp_err_t tcpip_adapter_dhcps_stop(tcpip_adapter_if_t tcpip_if)
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcps_stop_api);
 
     /* only support ap now */
-    if (tcpip_if != TCPIP_ADAPTER_IF_AP || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if (tcpip_if != TCPIP_ADAPTER_IF_ETH || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
         ESP_LOGD(TAG, "dhcp server invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
@@ -995,7 +1001,7 @@ esp_err_t tcpip_adapter_dhcpc_start(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcpc_start_api);
 
-    if ((tcpip_if != TCPIP_ADAPTER_IF_STA && tcpip_if != TCPIP_ADAPTER_IF_ETH)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if ((tcpip_if != TCPIP_ADAPTER_IF_STA /*&& tcpip_if != TCPIP_ADAPTER_IF_ETH*/)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
         ESP_LOGD(TAG, "dhcp client invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
@@ -1051,7 +1057,7 @@ esp_err_t tcpip_adapter_dhcpc_stop(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcpc_stop_api);
 
-    if ((tcpip_if != TCPIP_ADAPTER_IF_STA && tcpip_if != TCPIP_ADAPTER_IF_ETH)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if ((tcpip_if != TCPIP_ADAPTER_IF_STA /*&& tcpip_if != TCPIP_ADAPTER_IF_ETH*/)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
         ESP_LOGD(TAG, "dhcp client invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }

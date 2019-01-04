@@ -116,6 +116,10 @@ typedef struct {
 } system_event_ap_stadisconnected_t;
 
 typedef struct {
+    uint8_t client_ip[4];              /**< the IP that ESP32 soft-AP gave to the DHCP client */
+} system_event_ap_staipassigned_t;
+
+typedef struct {
     int rssi;                 /**< Received probe request signal strength */
     uint8_t mac[6];           /**< MAC address of the station which send probe request */
 } system_event_ap_probe_req_rx_t;
@@ -130,6 +134,7 @@ typedef union {
     system_event_sta_wps_fail_reason_t         sta_er_fail_reason;/**< ESP32 station WPS enrollee mode failed reason code received */
     system_event_ap_staconnected_t             sta_connected;      /**< a station connected to ESP32 soft-AP */
     system_event_ap_stadisconnected_t          sta_disconnected;   /**< a station disconnected to ESP32 soft-AP */
+    system_event_ap_staipassigned_t            sta_ipassigned;     /**< ESP32 soft-AP assigned a DCHP address to client*/
     system_event_ap_probe_req_rx_t             ap_probereqrecved;  /**< ESP32 soft-AP receive probe request packet */
     system_event_got_ip6_t                     got_ip6;            /**< ESP32 station　or ap or ethernet ipv6 addr state change to preferred */
 } system_event_info_t;
