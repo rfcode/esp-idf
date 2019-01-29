@@ -30,6 +30,8 @@
 
 #include "argtable3.h"
 
+#pragma GCC diagnostic ignored "-Wclobbered"
+
 /*******************************************************************************
  * This file is part of the argtable3 library.
  *
@@ -4286,7 +4288,9 @@ int arg_parse(int argc, char * *argv, void * *argtable)
            susbsequent parsing attempts.
          */
         for (i = 0; i < argc; i++)
+        {
             argvcopy[i] = argv[i];
+        }
 
         argvcopy[argc] = NULL;
         

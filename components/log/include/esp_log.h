@@ -106,6 +106,8 @@ uint32_t esp_log_early_timestamp(void);
  */
 void esp_log_write(esp_log_level_t level, const char* tag, const char* format, ...) __attribute__ ((format (printf, 3, 4)));
 
+void esp_print_log_tag_list(void);
+
 /** @cond */
 
 #include "esp_log_internal.h"
