@@ -69,10 +69,17 @@ extern "C" {
 
 #define IPV6STR "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x"
 
+typedef enum {
+    TCPIP_ADAPTER_DHCP_SUPPORT_OFF,
+    TCPIP_ADAPTER_DHCP_SUPPORT_SERVER,
+    TCPIP_ADAPTER_DHCP_SUPPORT_CLIENT
+} tcpip_adapter_dhcp_support_t;
+
 typedef struct {
     ip4_addr_t ip;
     ip4_addr_t netmask;
     ip4_addr_t gw;
+    tcpip_adapter_dhcp_support_t dhcp_support;
 } tcpip_adapter_ip_info_t;
 
 typedef struct {

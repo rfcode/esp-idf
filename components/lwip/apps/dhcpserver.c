@@ -84,6 +84,7 @@ static const u32_t magic_cookie  = 0x63538263;
 static struct udp_pcb *pcb_dhcps = NULL;
 static ip4_addr_t  broadcast_dhcps;
 static ip4_addr_t server_address;
+static ip4_addr_t gateway_address;
 static ip4_addr_t dns_server = {0};
 static ip4_addr_t client_address;        //added
 static ip4_addr_t client_address_plus;
@@ -325,19 +326,20 @@ static u8_t *add_offer_options(u8_t *optptr)
     *optptr++ = ip4_addr4(&ipadd);
 
     if (dhcps_router_enabled(dhcps_offer)) {
-        tcpip_adapter_ip_info_t if_ip;
+        //tcpip_adapter_ip_info_t if_ip;
         //bzero(&if_ip, sizeof(struct ip_info));
-        memset(&if_ip , 0x00, sizeof(tcpip_adapter_ip_info_t));
+        //memset(&if_ip , 0x00, sizeof(tcpip_adapter_ip_info_t));
 
-        tcpip_adapter_get_ip_info(ESP_IF_WIFI_AP, &if_ip);
+        //tcpip_adapter_get_ip_info(ESP_IF_WIFI_AP, &if_ip);
+        ip4_addr_t * p_gateway_addr = &gateway_address;
 
-        if (!ip4_addr_isany_val(if_ip.gw)) {
+        if (!ip4_addr_isany_val(gateway_address)) {
             *optptr++ = DHCP_OPTION_ROUTER;
             *optptr++ = 4;
-            *optptr++ = ip4_addr1(&if_ip.gw);
-            *optptr++ = ip4_addr2(&if_ip.gw);
-            *optptr++ = ip4_addr3(&if_ip.gw);
-            *optptr++ = ip4_addr4(&if_ip.gw);
+            *optptr++ = ip4_addr1(p_gateway_addr);
+            *optptr++ = ip4_addr2(p_gateway_addr);
+            *optptr++ = ip4_addr3(p_gateway_addr);
+            *optptr++ = ip4_addr4(p_gateway_addr);
         }
     }
 
@@ -1150,6 +1152,8 @@ void dhcps_start(struct netif *netif, ip4_addr_t ip)
 
     server_address.addr = ip.addr;
     dhcps_poll_set(server_address.addr);
+
+    gateway_address.addr = ip_2_ip4(&netif->gw)->addr;
 
     client_address_plus.addr = dhcps_poll.start_ip.addr;
 

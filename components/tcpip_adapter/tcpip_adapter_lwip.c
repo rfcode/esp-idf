@@ -46,7 +46,15 @@ static tcpip_adapter_ip6_info_t esp_ip6[TCPIP_ADAPTER_IF_MAX];
 static netif_init_fn esp_netif_init_fn[TCPIP_ADAPTER_IF_MAX];
 static tcpip_adapter_ip_lost_timer_t esp_ip_lost_timer[TCPIP_ADAPTER_IF_MAX];
 
+
+//
+// The dhcpserver.c module only supports a singleton DHCP server.
+// We allow only one adapter to be configured to use it.
+// dhcps_if is set to MAX if no adapter has taken use of it yet.
+//
+static tcpip_adapter_if_t dhcps_if = TCPIP_ADAPTER_IF_MAX;
 static tcpip_adapter_dhcp_status_t dhcps_status = TCPIP_ADAPTER_DHCP_INIT;
+
 static tcpip_adapter_dhcp_status_t dhcpc_status[TCPIP_ADAPTER_IF_MAX] = {TCPIP_ADAPTER_DHCP_INIT};
 static esp_err_t tcpip_adapter_start_api(tcpip_adapter_api_msg_t * msg);
 static esp_err_t tcpip_adapter_stop_api(tcpip_adapter_api_msg_t * msg);
@@ -112,10 +120,16 @@ void tcpip_adapter_init(void)
         memset(esp_ip, 0, sizeof(tcpip_adapter_ip_info_t)*TCPIP_ADAPTER_IF_MAX);
         memset(esp_ip_old, 0, sizeof(tcpip_adapter_ip_info_t)*TCPIP_ADAPTER_IF_MAX);
 
+        //
+        // IP info set in application code
+        //
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 192, 168 , 4, 1);
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 192, 168 , 4, 1);
 
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 192, 168 , 4, 1);
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 192, 168 , 4, 1);
-        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 10, 1 , 33, 2);
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
+//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 10, 1 , 33, 1);
         ret = sys_sem_new(&api_sync_sem, 0);
         if (ERR_OK != ret) {
             ESP_LOGE(TAG, "tcpip adatper api sync sem init fail");
@@ -168,50 +182,99 @@ static esp_err_t tcpip_adapter_update_default_netif(void)
     return ESP_OK;
 }
 
+static bool tcpip_adapter_can_use_dhcp_server(tcpip_adapter_if_t tcpip_if)
+{
+    //
+    // If the DHCP server is not started and no other 
+    // interface has claimed it, then we are good to use it
+    //
+    if( (TCPIP_ADAPTER_DHCP_INIT == dhcps_status) && 
+        ((TCPIP_ADAPTER_IF_MAX == dhcps_if) || (tcpip_if == dhcps_if)) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
 esp_err_t tcpip_adapter_start(tcpip_adapter_if_t tcpip_if, uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
 {
     netif_init_fn netif_init;
 
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, mac, ip_info, 0, tcpip_adapter_start_api);
 
-    if (tcpip_if >= TCPIP_ADAPTER_IF_MAX || mac == NULL || ip_info == NULL) {
+    if (tcpip_if >= TCPIP_ADAPTER_IF_MAX || mac == NULL) {
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (esp_netif[tcpip_if] == NULL || !netif_is_up(esp_netif[tcpip_if])) {
-        if (esp_netif[tcpip_if] == NULL) {
-            esp_netif[tcpip_if] = calloc(1, sizeof(*esp_netif[tcpip_if]));
-        }
+    if (NULL == esp_netif[tcpip_if])
+    {
+        //
+        // Allocate new netif struct
+        //
+        struct netif * new_netif = calloc(1, sizeof(*esp_netif[tcpip_if]));
 
-        if (esp_netif[tcpip_if] == NULL) {
+        if( NULL == new_netif )
+        {
             return ESP_ERR_NO_MEM;
         }
-        memcpy(esp_netif[tcpip_if]->hwaddr, mac, NETIF_MAX_HWADDR_LEN);
 
-        netif_init = tcpip_if_to_netif_init_fn(tcpip_if);
-        assert(netif_init != NULL);
-        netif_add(esp_netif[tcpip_if], &ip_info->ip, &ip_info->netmask, &ip_info->gw, NULL, netif_init, tcpip_input);
+        esp_netif[tcpip_if] = new_netif;
 
-#if ESP_GRATUITOUS_ARP
-        if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
-            netif_set_garp_flag(esp_netif[tcpip_if]);
-        }
-#endif
+        //
+        // Set MAC address
+        //
+        memcpy(new_netif->hwaddr, mac, NETIF_MAX_HWADDR_LEN);
+
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
-        netif_set_up(esp_netif[tcpip_if]);
+    //
+    // Get init function
+    //
+    netif_init = tcpip_if_to_netif_init_fn(tcpip_if);
 
-        if (dhcps_status == TCPIP_ADAPTER_DHCP_INIT) {
-            dhcps_set_new_lease_cb(tcpip_adapter_dhcps_cb);
-            
-            dhcps_start(esp_netif[tcpip_if], ip_info->ip);
+    if( NULL == ip_info )
+    {
+        //
+        // If ip_info passed into this function is NULL, then use any previously
+        // internal info stored in esp_ip array.  This guarantees ip_info to be non-NULL
+        // since this is a pointer to a statically delcared array item.
+        //
+        ip_info = &esp_ip[tcpip_if];
+    }
 
-            ESP_LOGD(TAG, "dhcp server start:(ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR ")",
-                   IP2STR(&ip_info->ip), IP2STR(&ip_info->netmask), IP2STR(&ip_info->gw));
+    //
+    // Call netif_add, this inits all the netif internal fields and calls the netif_init function
+    //
+    netif_add(esp_netif[tcpip_if], &ip_info->ip, &ip_info->netmask, &ip_info->gw, NULL, netif_init, tcpip_input);
 
-            dhcps_status = TCPIP_ADAPTER_DHCP_STARTED;
-        }
+#if ESP_GRATUITOUS_ARP
+    if (tcpip_if == TCPIP_ADAPTER_IF_STA || tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+        netif_set_garp_flag(esp_netif[tcpip_if]);
+    }
+#endif
+
+    //
+    // Bring netif up
+    //
+    netif_set_up(esp_netif[tcpip_if]);
+
+    //
+    // Check if the adapter is setup for DHCP server support
+    // Make sure the dhcp server is not running and not allocated to
+    // another interface
+    //
+    if ((TCPIP_ADAPTER_DHCP_SUPPORT_SERVER == ip_info->dhcp_support) &&
+        tcpip_adapter_can_use_dhcp_server(tcpip_if))
+    {
+        dhcps_set_new_lease_cb(tcpip_adapter_dhcps_cb);
+        
+        dhcps_start(esp_netif[tcpip_if], ip_info->ip);
+
+        ESP_LOGD(TAG, "dhcp server start:(ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR ")",
+               IP2STR(&ip_info->ip), IP2STR(&ip_info->netmask), IP2STR(&ip_info->gw));
+
+        dhcps_status = TCPIP_ADAPTER_DHCP_STARTED;
     }
 
     tcpip_adapter_update_default_netif();
@@ -291,15 +354,13 @@ esp_err_t tcpip_adapter_up(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_up_api);
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*||  tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
-        if (esp_netif[tcpip_if] == NULL) {
-            return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
-        }
-
-        /* use last obtained ip, or static ip */
-        netif_set_addr(esp_netif[tcpip_if], &esp_ip[tcpip_if].ip, &esp_ip[tcpip_if].netmask, &esp_ip[tcpip_if].gw);
-        netif_set_up(esp_netif[tcpip_if]);
+    if (esp_netif[tcpip_if] == NULL) {
+        return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
     }
+
+    /* use last obtained ip, or static ip */
+    netif_set_addr(esp_netif[tcpip_if], &esp_ip[tcpip_if].ip, &esp_ip[tcpip_if].netmask, &esp_ip[tcpip_if].gw);
+    netif_set_up(esp_netif[tcpip_if]);
 
     tcpip_adapter_update_default_netif();
 
@@ -316,23 +377,25 @@ esp_err_t tcpip_adapter_down(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_down_api);
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_STA /*||  tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
-        if (esp_netif[tcpip_if] == NULL) {
-            return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
-        }
-
-        if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STARTED) {
-            dhcp_stop(esp_netif[tcpip_if]);
-
-            dhcpc_status[tcpip_if] = TCPIP_ADAPTER_DHCP_INIT;
-
-            tcpip_adapter_reset_ip_info(tcpip_if);
-        }
-
-        netif_set_addr(esp_netif[tcpip_if], IP4_ADDR_ANY, IP4_ADDR_ANY, IP4_ADDR_ANY);
-        netif_set_down(esp_netif[tcpip_if]);
-        tcpip_adapter_start_ip_lost_timer(tcpip_if);
+    if (esp_netif[tcpip_if] == NULL) {
+        return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
     }
+
+    //
+    // Only need to stop DHCP client from attempting to get an IP
+    // The DHCP server can continue to run, but nothing will be happening.
+    //
+    if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STARTED) {
+        dhcp_stop(esp_netif[tcpip_if]);
+
+        dhcpc_status[tcpip_if] = TCPIP_ADAPTER_DHCP_INIT;
+
+        tcpip_adapter_reset_ip_info(tcpip_if);
+    }
+
+    netif_set_addr(esp_netif[tcpip_if], IP4_ADDR_ANY, IP4_ADDR_ANY, IP4_ADDR_ANY);
+    netif_set_down(esp_netif[tcpip_if]);
+    tcpip_adapter_start_ip_lost_timer(tcpip_if);
 
     tcpip_adapter_update_default_netif();
 
@@ -381,19 +444,16 @@ esp_err_t tcpip_adapter_get_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
 
     p_netif = esp_netif[tcpip_if];
 
-    if (p_netif != NULL && netif_is_up(p_netif)) {
-        ip4_addr_set(&ip_info->ip, ip_2_ip4(&p_netif->ip_addr));
-        ip4_addr_set(&ip_info->netmask, ip_2_ip4(&p_netif->netmask));
-        ip4_addr_set(&ip_info->gw, ip_2_ip4(&p_netif->gw));
+    if (p_netif != NULL) {
+        ip4_addr_copy(ip_info->ip, esp_ip[tcpip_if].ip);
+        ip4_addr_copy(ip_info->gw, esp_ip[tcpip_if].gw);
+        ip4_addr_copy(ip_info->netmask, esp_ip[tcpip_if].netmask);
+        ip_info->dhcp_support = esp_ip[tcpip_if].dhcp_support;
 
         return ESP_OK;
     }
 
-    ip4_addr_copy(ip_info->ip, esp_ip[tcpip_if].ip);
-    ip4_addr_copy(ip_info->gw, esp_ip[tcpip_if].gw);
-    ip4_addr_copy(ip_info->netmask, esp_ip[tcpip_if].netmask);
-
-    return ESP_OK;
+    return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
 }
 
 esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_ip_info_t *ip_info)
@@ -407,15 +467,31 @@ esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
+    if (TCPIP_ADAPTER_DHCP_SUPPORT_SERVER == ip_info->dhcp_support)
+    {
         tcpip_adapter_dhcps_get_status(tcpip_if, &status);
 
-        if (status != TCPIP_ADAPTER_DHCP_STOPPED) {
+        //
+        // For the DHCP server, we are only concerned if it is running or not.
+        // It's not good to change the IP of the system while DHCP server is running.
+        // It would negatively affect the stability of the IP address pool.
+        //
+        if (TCPIP_ADAPTER_DHCP_STARTED == status) {
             return ESP_ERR_TCPIP_ADAPTER_DHCP_NOT_STOPPED;
         }
-    } else if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/ ) {
+    }
+    else if (TCPIP_ADAPTER_DHCP_SUPPORT_CLIENT == ip_info->dhcp_support)
+    {
         tcpip_adapter_dhcpc_get_status(tcpip_if, &status);
 
+        //
+        // We don't set the IP info while DHCP client is running.
+        // The purpose of the DHCP client running is to get usable IP
+        // address.  If you want to set the IP via this interface,
+        // the DHCP client support needs to be turned off.  Otherwise,
+        // when a DHCP address is assigned, your static IP will be
+        // over written.
+        //
         if (status != TCPIP_ADAPTER_DHCP_STOPPED) {
             return ESP_ERR_TCPIP_ADAPTER_DHCP_NOT_STOPPED;
         }
@@ -424,33 +500,54 @@ esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
 #endif
     }
 
+    //
+    // Copy IP info
+    //
     ip4_addr_copy(esp_ip[tcpip_if].ip, ip_info->ip);
     ip4_addr_copy(esp_ip[tcpip_if].gw, ip_info->gw);
     ip4_addr_copy(esp_ip[tcpip_if].netmask, ip_info->netmask);
 
+    //
+    // Copy DHCP support setting
+    //
+    esp_ip[tcpip_if].dhcp_support = ip_info->dhcp_support;
+
     p_netif = esp_netif[tcpip_if];
 
-    if (p_netif != NULL && netif_is_up(p_netif)) {
-        netif_set_addr(p_netif, &ip_info->ip, &ip_info->netmask, &ip_info->gw);
-        if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
-            if (!(ip4_addr_isany_val(ip_info->ip) || ip4_addr_isany_val(ip_info->netmask) || ip4_addr_isany_val(ip_info->gw))) {
-                system_event_t evt;
-                if (tcpip_if == TCPIP_ADAPTER_IF_STA) {
-                    evt.event_id = SYSTEM_EVENT_STA_GOT_IP;
-                } else if (tcpip_if == TCPIP_ADAPTER_IF_ETH) {
-                    evt.event_id = SYSTEM_EVENT_ETH_GOT_IP;
-                }
-                evt.event_info.got_ip.ip_changed = false;
+    if (p_netif != NULL && netif_is_up(p_netif)) 
+    {
+        //
+        // Make sure all are valid IP addresses (not all zeros)
+        //
+        if ( !ip4_addr_isany_val(ip_info->ip) && !ip4_addr_isany_val(ip_info->netmask) && !ip4_addr_isany_val(ip_info->gw) ) 
+        {
+            //
+            // Actually apply the new IP setting
+            //
+            netif_set_addr(p_netif, &ip_info->ip, &ip_info->netmask, &ip_info->gw);
 
-                if (memcmp(ip_info, &esp_ip_old[tcpip_if], sizeof(tcpip_adapter_ip_info_t))) {
-                    evt.event_info.got_ip.ip_changed = true;
-                }
-
-                memcpy(&evt.event_info.got_ip.ip_info, ip_info, sizeof(tcpip_adapter_ip_info_t));
-                memcpy(&esp_ip_old[tcpip_if], ip_info, sizeof(tcpip_adapter_ip_info_t));
-                esp_event_send(&evt);
-                ESP_LOGD(TAG, "if%d tcpip adapter set static ip: ip changed=%d", tcpip_if, evt.event_info.got_ip.ip_changed);
+            //
+            // Send a system event
+            //
+            system_event_t evt;
+            if (tcpip_if == TCPIP_ADAPTER_IF_STA) 
+            {
+                evt.event_id = SYSTEM_EVENT_STA_GOT_IP;
+            } 
+            else if (tcpip_if == TCPIP_ADAPTER_IF_ETH) 
+            {
+                evt.event_id = SYSTEM_EVENT_ETH_GOT_IP;
             }
+            evt.event_info.got_ip.ip_changed = false;
+
+            if (memcmp(ip_info, &esp_ip_old[tcpip_if], sizeof(tcpip_adapter_ip_info_t))) {
+                evt.event_info.got_ip.ip_changed = true;
+            }
+
+            memcpy(&evt.event_info.got_ip.ip_info, ip_info, sizeof(tcpip_adapter_ip_info_t));
+            memcpy(&esp_ip_old[tcpip_if], ip_info, sizeof(tcpip_adapter_ip_info_t));
+            esp_event_send(&evt);
+            ESP_LOGD(TAG, "if%d tcpip adapter set static ip: ip changed=%d", tcpip_if, evt.event_info.got_ip.ip_changed);
         }
     }
 
@@ -942,10 +1039,14 @@ static esp_err_t tcpip_adapter_start_ip_lost_timer(tcpip_adapter_if_t tcpip_if)
     struct netif *netif = esp_netif[tcpip_if];
 
     ESP_LOGD(TAG, "if%d start ip lost tmr: enter", tcpip_if);
-    if (tcpip_if != TCPIP_ADAPTER_IF_STA) {
-        ESP_LOGD(TAG, "if%d start ip lost tmr: only sta support ip lost timer", tcpip_if);
-        return ESP_OK;
-    }
+
+    //
+    // TODO: Test this with ethernet, also, why is this a thing?
+    //
+    //if (tcpip_if != TCPIP_ADAPTER_IF_STA) {
+    //    ESP_LOGD(TAG, "if%d start ip lost tmr: only sta support ip lost timer", tcpip_if);
+    //    return ESP_OK;
+    //}
 
     if (esp_ip_lost_timer[tcpip_if].timer_running) {
         ESP_LOGD(TAG, "if%d start ip lost tmr: already started", tcpip_if);
@@ -1057,12 +1158,14 @@ esp_err_t tcpip_adapter_dhcpc_stop(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcpc_stop_api);
 
-    if ((tcpip_if != TCPIP_ADAPTER_IF_STA /*&& tcpip_if != TCPIP_ADAPTER_IF_ETH*/)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if (tcpip_if >= TCPIP_ADAPTER_IF_MAX) 
+    {
         ESP_LOGD(TAG, "dhcp client invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STARTED) {
+    if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STARTED) 
+    {
         struct netif *p_netif = esp_netif[tcpip_if];
 
         if (p_netif != NULL) {
@@ -1073,7 +1176,9 @@ esp_err_t tcpip_adapter_dhcpc_stop(tcpip_adapter_if_t tcpip_if)
             ESP_LOGD(TAG, "dhcp client if not ready");
             return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
         }
-    } else if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STOPPED) {
+    } 
+    else if (dhcpc_status[tcpip_if] == TCPIP_ADAPTER_DHCP_STOPPED) 
+    {
         ESP_LOGD(TAG, "dhcp client already stoped");
         return ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED;
     }

@@ -75,8 +75,14 @@ esp_err_t system_event_eth_start_handle_default(system_event_t *event)
     uint8_t eth_mac[6];
 
     esp_eth_get_mac(eth_mac);
-    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &eth_ip);
-    tcpip_adapter_eth_start(eth_mac, &eth_ip);
+    //tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &eth_ip);
+    //tcpip_adapter_eth_start(eth_mac, &eth_ip);
+
+    //
+    // Instead of loading the params from tcpip_adapter and then passing them back in,
+    // just indicate for the tcpip_adapter to use the already internally set params
+    //
+    tcpip_adapter_eth_start(eth_mac, NULL);
 
     return ESP_OK;
 }
@@ -94,7 +100,6 @@ esp_err_t system_event_eth_connected_handle_default(system_event_t *event)
 
     tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
 
-#if 0
     tcpip_adapter_dhcpc_get_status(TCPIP_ADAPTER_IF_ETH, &status);
 
     if (status == TCPIP_ADAPTER_DHCP_INIT) {
@@ -116,7 +121,6 @@ esp_err_t system_event_eth_connected_handle_default(system_event_t *event)
             ESP_LOGE(TAG, "invalid static ip");
         }
     }
-#endif
 
     return ESP_OK;
 }
