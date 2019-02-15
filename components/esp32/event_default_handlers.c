@@ -71,7 +71,7 @@ static system_event_handler_t default_event_handlers[SYSTEM_EVENT_MAX] = { 0 };
 
 esp_err_t system_event_eth_start_handle_default(system_event_t *event)
 {
-    tcpip_adapter_ip_info_t eth_ip;
+    //tcpip_adapter_ip_info_t eth_ip;
     uint8_t eth_mac[6];
 
     esp_eth_get_mac(eth_mac);
@@ -97,28 +97,36 @@ esp_err_t system_event_eth_stop_handle_default(system_event_t *event)
 esp_err_t system_event_eth_connected_handle_default(system_event_t *event)
 {
     tcpip_adapter_dhcp_status_t status;
+    tcpip_adapter_ip_info_t eth_ip;
 
     tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
 
-    tcpip_adapter_dhcpc_get_status(TCPIP_ADAPTER_IF_ETH, &status);
+    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &eth_ip);
 
-    if (status == TCPIP_ADAPTER_DHCP_INIT) {
-        tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);
-    } else if (status == TCPIP_ADAPTER_DHCP_STOPPED) {
-        tcpip_adapter_ip_info_t eth_ip;
+    //
+    // Check if DHCP support is turned on in adapter
+    //
+    if( TCPIP_ADAPTER_DHCP_SUPPORT_CLIENT == eth_ip.dhcp_support )
+    {
+        tcpip_adapter_dhcpc_get_status(TCPIP_ADAPTER_IF_ETH, &status);
 
-        tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &eth_ip);
+        if (status == TCPIP_ADAPTER_DHCP_INIT) 
+        {
+            tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);
+        } 
+        else if (status == TCPIP_ADAPTER_DHCP_STOPPED) 
+        {
+            if (!(ip4_addr_isany_val(eth_ip.ip) || ip4_addr_isany_val(eth_ip.netmask))) {
+                system_event_t evt;
 
-        if (!(ip4_addr_isany_val(eth_ip.ip) || ip4_addr_isany_val(eth_ip.netmask))) {
-            system_event_t evt;
+                //notify event
+                evt.event_id = SYSTEM_EVENT_ETH_GOT_IP;
+                memcpy(&evt.event_info.got_ip.ip_info, &eth_ip, sizeof(tcpip_adapter_ip_info_t));
 
-            //notify event
-            evt.event_id = SYSTEM_EVENT_ETH_GOT_IP;
-            memcpy(&evt.event_info.got_ip.ip_info, &eth_ip, sizeof(tcpip_adapter_ip_info_t));
-
-            esp_event_send(&evt);
-        } else {
-            ESP_LOGE(TAG, "invalid static ip");
+                esp_event_send(&evt);
+            } else {
+                ESP_LOGE(TAG, "invalid static ip");
+            }
         }
     }
 

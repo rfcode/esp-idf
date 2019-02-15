@@ -105,6 +105,12 @@ void phy_lan8720_init(void)
     esp_eth_smi_write(SW_STRAP_CONTROL_REG,
                       DEFAULT_STRAP_CONFIG | SW_STRAP_CONFIG_DONE);
 
+    //
+    // Write PHY ID 1 REG magic number.  
+    // This is polled periodically in phy_common.c: phy_mii_check_link_status()
+    // When not found, the system will trigger a hard reset via TWDT.
+    //
+    esp_eth_smi_write(MII_PHY_IDENTIFIER_1_REG, MII_PHY_IDENTIFIER_1_MAGIC);
 
     ets_delay_us(300);
 

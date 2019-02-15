@@ -28,6 +28,16 @@
 #define MII_PHY_IDENTIFIER_1_REG              (0x2)
 #define MII_PHY_IDENTIFIER_2_REG              (0x3)
 
+//
+// The PHY ID magic number is written to PHY ID 1 REG in phy_lan8720_init()
+// after the default PHY ID has been verified.  Then in phy_mii_check_link_status()
+// The PHY ID 1 REG is polled periodically to check if the magic number is still valid.
+// If the magic number is no longer in PHY ID 1 REG, then the PHY is determined to
+// have reset due to an unexpected reason.  If this happens, then the system is reset
+// via ESP32 Task Watchdog Timer (TWDT).
+//
+#define MII_PHY_IDENTIFIER_1_MAGIC          (0xBEEF)
+
 #define MII_AUTO_NEG_ADVERTISEMENT_REG      (0x4)
 #define MII_ASM_DIR                            BIT(11)
 #define MII_PAUSE                              BIT(10)

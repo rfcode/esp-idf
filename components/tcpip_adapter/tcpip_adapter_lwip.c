@@ -96,16 +96,39 @@ static void tcpip_adapter_api_cb(void* api_msg)
 
 static void tcpip_adapter_dhcps_cb(u8_t client_ip[4])
 {
-    ESP_LOGI(TAG,"softAP assign IP to station,IP is: %d.%d.%d.%d",
-                client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
     system_event_t evt;
-    evt.event_id = SYSTEM_EVENT_AP_STAIPASSIGNED;
-    evt.event_info.sta_ipassigned.client_ip[0] = client_ip[0];
-    evt.event_info.sta_ipassigned.client_ip[1] = client_ip[1];
-    evt.event_info.sta_ipassigned.client_ip[2] = client_ip[2];
-    evt.event_info.sta_ipassigned.client_ip[3] = client_ip[3];
+    if( TCPIP_ADAPTER_IF_ETH == dhcps_if )
+    {
+        ESP_LOGI(TAG,"Ethernet assigned IP to station,IP is: %d.%d.%d.%d",
+                    client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
+        evt.event_id = SYSTEM_EVENT_ETH_IPASSIGNED;
 
-    esp_event_send(&evt);
+        evt.event_info.eth_ipassigned.client_ip[0] = client_ip[0];
+        evt.event_info.eth_ipassigned.client_ip[1] = client_ip[1];
+        evt.event_info.eth_ipassigned.client_ip[2] = client_ip[2];
+        evt.event_info.eth_ipassigned.client_ip[3] = client_ip[3];
+
+        esp_event_send(&evt);
+    }
+    else if( TCPIP_ADAPTER_IF_AP == dhcps_if )
+    {
+        ESP_LOGI(TAG,"softAP assigned IP to station,IP is: %d.%d.%d.%d",
+                    client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
+        evt.event_id = SYSTEM_EVENT_AP_STAIPASSIGNED;
+
+        evt.event_info.sta_ipassigned.client_ip[0] = client_ip[0];
+        evt.event_info.sta_ipassigned.client_ip[1] = client_ip[1];
+        evt.event_info.sta_ipassigned.client_ip[2] = client_ip[2];
+        evt.event_info.sta_ipassigned.client_ip[3] = client_ip[3];
+
+        esp_event_send(&evt);
+    }
+    else
+    {
+        ESP_LOGI(TAG,"if %d assigned IP to station,IP is: %d.%d.%d.%d",
+                    dhcps_if, client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
+    }
+
 }
 
 void tcpip_adapter_init(void)
@@ -492,7 +515,7 @@ esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_i
         // when a DHCP address is assigned, your static IP will be
         // over written.
         //
-        if (status != TCPIP_ADAPTER_DHCP_STOPPED) {
+        if (TCPIP_ADAPTER_DHCP_STARTED == status) {
             return ESP_ERR_TCPIP_ADAPTER_DHCP_NOT_STOPPED;
         }
 #if LWIP_DNS /* don't build if not configured for use in lwipopts.h */
@@ -1102,12 +1125,13 @@ esp_err_t tcpip_adapter_dhcpc_start(tcpip_adapter_if_t tcpip_if)
 {
     TCPIP_ADAPTER_IPC_CALL(tcpip_if, 0, 0, 0, tcpip_adapter_dhcpc_start_api);
 
-    if ((tcpip_if != TCPIP_ADAPTER_IF_STA /*&& tcpip_if != TCPIP_ADAPTER_IF_ETH*/)  || tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
+    if (tcpip_if >= TCPIP_ADAPTER_IF_MAX) {
         ESP_LOGD(TAG, "dhcp client invalid if=%d", tcpip_if);
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
-    if (dhcpc_status[tcpip_if] != TCPIP_ADAPTER_DHCP_STARTED) {
+    if (dhcpc_status[tcpip_if] != TCPIP_ADAPTER_DHCP_STARTED) 
+    {
         struct netif *p_netif = esp_netif[tcpip_if];
 
         tcpip_adapter_reset_ip_info(tcpip_if);

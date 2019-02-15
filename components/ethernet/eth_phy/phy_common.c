@@ -16,6 +16,7 @@
 #include "eth_phy/phy_reg.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 
 static const char *TAG = "phy_common";
 
@@ -60,7 +61,48 @@ void phy_mii_enable_flow_ctrl(void)
 
 bool phy_mii_check_link_status(void)
 {
-    if ((esp_eth_smi_read(MII_BASIC_MODE_STATUS_REG) & MII_LINK_STATUS)) {
+    //
+    // Poll for link.
+    //
+    uint16_t basic_mode_status = esp_eth_smi_read(MII_BASIC_MODE_STATUS_REG);
+
+    //
+    // Poll for magic number in PHY ID 1 REG
+    //
+    uint16_t phy_id1 = esp_eth_smi_read(MII_PHY_IDENTIFIER_1_REG);
+
+
+    ESP_LOGD(TAG, "MII_BASIC_MODE_STATUS_REG = 0x%04x", basic_mode_status);
+
+    ESP_LOGD(TAG, "MII_PHY_IDENTIFIER_1_REG = 0x%04x", phy_id1);
+
+    //
+    // Cause hard reset if magic not found
+    //
+    if(MII_PHY_IDENTIFIER_1_MAGIC != phy_id1 )
+    {
+        ESP_LOGE(TAG, "MII_PHY_IDENTIFIER_1_MAGIC (0x%04X) Not found!  Initiating watchdog reset...", MII_PHY_IDENTIFIER_1_MAGIC);
+
+        //
+        // HACK
+        //
+
+        //
+        // This call adds the current task to the task WDT subscription list.
+        // If a task in the subscription list does not pet the watchdog before
+        // the watchdog timeout period (sdkconfig: CONFIG_TASK_WDT_TIMEOUT_S), then
+        // the system will go thru watchdog reset.
+        //
+        esp_task_wdt_add(NULL);
+
+        //
+        // This spins forever insuring that the current task will starve the watchdog
+        // and cause system reset.
+        //
+        while(1);
+    }
+
+    if (basic_mode_status & MII_LINK_STATUS) {
         ESP_LOGD(TAG, "phy_mii_check_link_status(UP)");
         return true;
     } else {
