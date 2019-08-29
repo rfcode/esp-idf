@@ -32,6 +32,7 @@ node("ubuntu_16.04&&gcc-arm-none-eabi") {
 
         //setup()
         //parallel build_notify
+        sh "git checkout $BRANCH_NAME"
         sh "git submodule update --init --recursive"
     }
 }
