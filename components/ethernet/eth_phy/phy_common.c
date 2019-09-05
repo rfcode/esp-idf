@@ -84,7 +84,15 @@ bool phy_mii_check_link_status(void)
         ESP_LOGE(TAG, "MII_PHY_IDENTIFIER_1_MAGIC (0x%04X) Not found!  Initiating watchdog reset...", MII_PHY_IDENTIFIER_1_MAGIC);
 
         //
-        // HACK
+        // HACK - see phy_lan8720.c::phy_lan8720_init()
+        //
+        // We Write MII_PHY_IDENTIFIER_1_MAGIC to the MII_PHY_IDENTIFIER_1_REG at startup.
+        // phy_mii_check_link_status() runs periodically and polls the register to check
+        // if the magic is still there.  If it is gone, then we assume that the PHY
+        // has gone through reset.  Instead of trying to re-init the PHY on the fly, we
+        // force a system reset here.  This was added to work around an ESD issue.  A
+        // zap gun was used to cause the PHY to reset, but the system was just hanging.
+        // This method causes the system to recover and pass regulation testing.
         //
 
         //

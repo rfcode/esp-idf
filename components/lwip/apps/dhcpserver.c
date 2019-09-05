@@ -326,6 +326,13 @@ static u8_t *add_offer_options(u8_t *optptr)
     *optptr++ = ip4_addr4(&ipadd);
 
     if (dhcps_router_enabled(dhcps_offer)) {
+        //
+        // Previously, the dhcp server was hard coded to use the
+        // WiFi access point only.  This has been modified to 
+        // allow any adapter to use the dhcpserver, but only
+        // one may use it at a time.  It is set at startup,
+        // see tcpip_adapter/tcpip_adapter_lwip.c::dhcps_if global
+        //
         //tcpip_adapter_ip_info_t if_ip;
         //bzero(&if_ip, sizeof(struct ip_info));
         //memset(&if_ip , 0x00, sizeof(tcpip_adapter_ip_info_t));

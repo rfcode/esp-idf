@@ -144,15 +144,14 @@ void tcpip_adapter_init(void)
         memset(esp_ip_old, 0, sizeof(tcpip_adapter_ip_info_t)*TCPIP_ADAPTER_IF_MAX);
 
         //
-        // IP info set in application code
+        // IP info was previously hard coded to defaults here.  This has
+        // been changed to allow the application layer code to set the
+        // default IP info at startup
         //
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 192, 168 , 4, 1);
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 192, 168 , 4, 1);
-
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 10, 1 , 33, 2);
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
-//        IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 10, 1 , 33, 1);
+        // IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].ip, 192, 168 , 4, 1);
+        // IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].netmask, 255, 255 , 255, 0);
+        // IP4_ADDR(&esp_ip[TCPIP_ADAPTER_IF_ETH].gw, 192, 168 , 4, 1);
+        //
         ret = sys_sem_new(&api_sync_sem, 0);
         if (ERR_OK != ret) {
             ESP_LOGE(TAG, "tcpip adatper api sync sem init fail");
@@ -847,6 +846,9 @@ esp_err_t tcpip_adapter_set_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_
     ESP_LOGD(TAG, "set dns if=%d type=%d dns=%x", tcpip_if, type, dns->ip.u_addr.ip4.addr);
     dns->ip.type = IPADDR_TYPE_V4;
 
+    //
+    // Not currently supporting DNS on ethernet adapter, might want to add back in later
+    //
     if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
         dns_setserver(type, &(dns->ip));
     } else {
@@ -891,6 +893,9 @@ esp_err_t tcpip_adapter_get_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
 
+    //
+    // Not currently supporting DNS on ethernet adapter, might want to add back in later
+    //
     if (tcpip_if == TCPIP_ADAPTER_IF_STA /*|| tcpip_if == TCPIP_ADAPTER_IF_ETH*/) {
         dns->ip = dns_getserver(type);
     } else {

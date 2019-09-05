@@ -12,7 +12,6 @@ properties(
 
 @Field def build_status = [:]
 @Field def build = [:]
-//@Field def build_notify = [:]
 
 node("ubuntu_16.04&&gcc-arm-none-eabi") {
     stage("Checkout") {
@@ -36,32 +35,4 @@ node("ubuntu_16.04&&gcc-arm-none-eabi") {
         sh "git submodule update --init --recursive"
     }
 }
-
-//void setup() {
-//    def file = readFile("tools/projects.txt")
-//    
-//    def publish = sh(
-//        script: "git log --pretty=oneline -1",
-//        returnStdout: true
-//    ).contains("[ci publish]")
-//    
-//    file.replaceAll(".*/", "").split('\n').each {
-//        build_status[it] = PENDING
-//        build[it] = {
-//            lock(it) {
-//                try {
-//                    sh """#!/bin/bash
-//                    set -o pipefail
-//                    cd boards/**/${it}
-//                    make |& tee ${it}.log
-//                    cp boards/**/${it}/build/*.bin ${env.WORKSPACE}/bin
-//                    """
-//                    build_status[it] |= SUCCESS
-//                } catch (e) {
-//                    build_status[it] |= FAILURE
-//                }
-//            }
-//        }
-//    }
-//}
 
