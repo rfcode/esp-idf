@@ -51,6 +51,7 @@ typedef enum {
     SYSTEM_EVENT_ETH_STOP,                 /**< ESP32 ethernet stop */
     SYSTEM_EVENT_ETH_CONNECTED,            /**< ESP32 ethernet phy link up */
     SYSTEM_EVENT_ETH_DISCONNECTED,         /**< ESP32 ethernet phy link down */
+    SYSTEM_EVENT_ETH_IPASSIGNED,           /**< ESP32 ethernet assigned DHCP IP */
     SYSTEM_EVENT_ETH_GOT_IP,               /**< ESP32 ethernet got IP from connected AP */
     SYSTEM_EVENT_MAX
 } system_event_id_t;
@@ -116,6 +117,12 @@ typedef struct {
 } system_event_ap_stadisconnected_t;
 
 typedef struct {
+    uint8_t client_ip[4];              /**< the IP that ESP32 soft-AP gave to the DHCP client */
+} system_event_ap_staipassigned_t;
+
+typedef system_event_ap_staipassigned_t system_event_eth_ipassigned_t; 
+
+typedef struct {
     int rssi;                 /**< Received probe request signal strength */
     uint8_t mac[6];           /**< MAC address of the station which send probe request */
 } system_event_ap_probe_req_rx_t;
@@ -130,6 +137,8 @@ typedef union {
     system_event_sta_wps_fail_reason_t         sta_er_fail_reason;/**< ESP32 station WPS enrollee mode failed reason code received */
     system_event_ap_staconnected_t             sta_connected;      /**< a station connected to ESP32 soft-AP */
     system_event_ap_stadisconnected_t          sta_disconnected;   /**< a station disconnected to ESP32 soft-AP */
+    system_event_ap_staipassigned_t            sta_ipassigned;     /**< ESP32 soft-AP assigned a DCHP address to client*/
+    system_event_eth_ipassigned_t              eth_ipassigned;     /**< ESP32 ethernet assigned a DCHP address to client*/
     system_event_ap_probe_req_rx_t             ap_probereqrecved;  /**< ESP32 soft-AP receive probe request packet */
     system_event_got_ip6_t                     got_ip6;            /**< ESP32 station　or ap or ethernet ipv6 addr state change to preferred */
 } system_event_info_t;

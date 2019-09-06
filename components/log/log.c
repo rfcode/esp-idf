@@ -172,6 +172,80 @@ void esp_log_level_set(const char* tag, esp_log_level_t level)
     xSemaphoreGive(s_log_mutex);
 }
 
+static void print_log_level(char * tag, uint32_t level)
+{
+    const char * level_str[] =
+    {
+        "none",
+        "error",
+        "warn",
+        "info",
+        "debug",
+        "verbose"
+    };
+
+    int len = printf("%s", tag);
+    if( len < 16 )
+    {
+        for( int loop = 16 - len; loop != 0; loop-- )
+        {
+            printf(" ");
+        }
+    }
+
+    if( level <= ESP_LOG_VERBOSE )
+    {
+        printf(" %s\n", level_str[level]);
+    }
+    else
+    {
+        printf(" %u\n", level);
+    }
+}
+
+void esp_print_log_tag_list(void)
+{
+
+    if (!s_log_mutex) {
+        s_log_mutex = xSemaphoreCreateMutex();
+    }
+    xSemaphoreTake(s_log_mutex, portMAX_DELAY);
+
+    //
+    // Print all cached entries
+    //
+    //printf("Cached\n");
+    for (int i = 0; i < s_log_cache_entry_count; ++i) {
+        print_log_level((char *)s_log_cache[i].tag, s_log_cache[i].level);
+    }
+
+    //
+    // Print all uncached entries that do not exist in
+    // the cached list. 
+    //
+    // (Inner thoughts: 
+    //      why is there an uncached list?  
+    //      why are there uncached entries that also are cached?)
+    //
+    uncached_tag_entry_t *it = NULL;
+    //printf("Uncached\n");
+    SLIST_FOREACH( it, &s_log_tags, entries ) {
+        bool cached = false;
+        for (int i = 0; i < s_log_cache_entry_count; ++i) {
+            if(!strcmp(s_log_cache[i].tag, it->tag))
+            {
+                cached = true;
+                break;
+            }
+        }
+        if( !cached )
+        {
+            print_log_level(it->tag, it->level);
+        }
+    }
+    xSemaphoreGive(s_log_mutex);
+}
+
 void clear_log_level_list()
 {
     while( !SLIST_EMPTY(&s_log_tags)) {

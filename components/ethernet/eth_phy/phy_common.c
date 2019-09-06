@@ -16,6 +16,7 @@
 #include "eth_phy/phy_reg.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 
 static const char *TAG = "phy_common";
 
@@ -60,7 +61,56 @@ void phy_mii_enable_flow_ctrl(void)
 
 bool phy_mii_check_link_status(void)
 {
-    if ((esp_eth_smi_read(MII_BASIC_MODE_STATUS_REG) & MII_LINK_STATUS)) {
+    //
+    // Poll for link.
+    //
+    uint16_t basic_mode_status = esp_eth_smi_read(MII_BASIC_MODE_STATUS_REG);
+
+    //
+    // Poll for magic number in PHY ID 1 REG
+    //
+    uint16_t phy_id1 = esp_eth_smi_read(MII_PHY_IDENTIFIER_1_REG);
+
+
+    ESP_LOGD(TAG, "MII_BASIC_MODE_STATUS_REG = 0x%04x", basic_mode_status);
+
+    ESP_LOGD(TAG, "MII_PHY_IDENTIFIER_1_REG = 0x%04x", phy_id1);
+
+    //
+    // Cause hard reset if magic not found
+    //
+    if(MII_PHY_IDENTIFIER_1_MAGIC != phy_id1 )
+    {
+        ESP_LOGE(TAG, "MII_PHY_IDENTIFIER_1_MAGIC (0x%04X) Not found!  Initiating watchdog reset...", MII_PHY_IDENTIFIER_1_MAGIC);
+
+        //
+        // HACK - see phy_lan8720.c::phy_lan8720_init()
+        //
+        // We Write MII_PHY_IDENTIFIER_1_MAGIC to the MII_PHY_IDENTIFIER_1_REG at startup.
+        // phy_mii_check_link_status() runs periodically and polls the register to check
+        // if the magic is still there.  If it is gone, then we assume that the PHY
+        // has gone through reset.  Instead of trying to re-init the PHY on the fly, we
+        // force a system reset here.  This was added to work around an ESD issue.  A
+        // zap gun was used to cause the PHY to reset, but the system was just hanging.
+        // This method causes the system to recover and pass regulation testing.
+        //
+
+        //
+        // This call adds the current task to the task WDT subscription list.
+        // If a task in the subscription list does not pet the watchdog before
+        // the watchdog timeout period (sdkconfig: CONFIG_TASK_WDT_TIMEOUT_S), then
+        // the system will go thru watchdog reset.
+        //
+        esp_task_wdt_add(NULL);
+
+        //
+        // This spins forever insuring that the current task will starve the watchdog
+        // and cause system reset.
+        //
+        while(1);
+    }
+
+    if (basic_mode_status & MII_LINK_STATUS) {
         ESP_LOGD(TAG, "phy_mii_check_link_status(UP)");
         return true;
     } else {

@@ -129,11 +129,15 @@ esp_err_t esp_efuse_mac_get_default(uint8_t* mac)
 
     calc_crc = esp_crc8(mac, 6);
 
+    ESP_LOGI(TAG, "Base MAC address from BLK0 of EFUSE: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
     if (efuse_crc != calc_crc) {
+
          // Small range of MAC addresses are accepted even if CRC is invalid.
          // These addresses are reserved for Espressif internal use.
         if ((mac_high & 0xFFFF) == 0x18fe) {
             if ((mac_low >= 0x346a85c7) && (mac_low <= 0x346a85f8)) {
+                ESP_LOGE(TAG, "Base MAC address from BLK0 of EFUSE CRC error, but is in a special address range.");
                 return ESP_OK;
             }
         } else {
