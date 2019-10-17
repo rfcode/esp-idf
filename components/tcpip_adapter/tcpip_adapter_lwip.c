@@ -657,7 +657,6 @@ esp_err_t tcpip_adapter_get_ip6_linklocal(tcpip_adapter_if_t tcpip_if, ip6_addr_
     return ESP_OK;
 }
 
-#if 0
 esp_err_t tcpip_adapter_get_mac(tcpip_adapter_if_t tcpip_if, uint8_t mac[6])
 {
     struct netif *p_netif;
@@ -677,6 +676,7 @@ esp_err_t tcpip_adapter_get_mac(tcpip_adapter_if_t tcpip_if, uint8_t mac[6])
     return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
 }
 
+#if 0
 esp_err_t tcpip_adapter_set_mac(tcpip_adapter_if_t tcpip_if, uint8_t mac[6])
 {
     struct netif *p_netif;

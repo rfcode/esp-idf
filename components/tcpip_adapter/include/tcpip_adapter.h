@@ -622,6 +622,8 @@ esp_err_t tcpip_adapter_get_hostname(tcpip_adapter_if_t tcpip_if, const char **h
  */
 esp_err_t tcpip_adapter_get_netif(tcpip_adapter_if_t tcpip_if, void ** netif);
 
+esp_err_t tcpip_adapter_get_mac(tcpip_adapter_if_t tcpip_if, uint8_t mac[6]);
+
 #ifdef __cplusplus
 }
 #endif
