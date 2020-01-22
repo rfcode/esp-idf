@@ -266,137 +266,141 @@ static esp_err_t esp_system_event_debug(system_event_t *event)
     }
 
     switch (event->event_id) {
-    case SYSTEM_EVENT_WIFI_READY: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_WIFI_READY");
-        break;
-    }
-    case SYSTEM_EVENT_SCAN_DONE: {
-        system_event_sta_scan_done_t *scan_done = &event->event_info.scan_done;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_SCAN_DONE, status:%d, number:%d",  scan_done->status, scan_done->number);
-        break;
-    }
-    case SYSTEM_EVENT_STA_START: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_START");
-        break;
-    }
-    case SYSTEM_EVENT_STA_STOP: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_STOP");
-        break;
-    }
-    case SYSTEM_EVENT_STA_CONNECTED: {
-        system_event_sta_connected_t *connected = &event->event_info.connected;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_CONNECTED, ssid:%s, ssid_len:%d, bssid:" MACSTR ", channel:%d, authmode:%d", \
-                   connected->ssid, connected->ssid_len, MAC2STR(connected->bssid), connected->channel, connected->authmode);
-        break;
-    }
-    case SYSTEM_EVENT_STA_DISCONNECTED: {
-        system_event_sta_disconnected_t *disconnected = &event->event_info.disconnected;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_DISCONNECTED, ssid:%s, ssid_len:%d, bssid:" MACSTR ", reason:%d", \
-                   disconnected->ssid, disconnected->ssid_len, MAC2STR(disconnected->bssid), disconnected->reason);
-        break;
-    }
-    case SYSTEM_EVENT_STA_AUTHMODE_CHANGE: {
-        system_event_sta_authmode_change_t *auth_change = &event->event_info.auth_change;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_AUTHMODE_CHNAGE, old_mode:%d, new_mode:%d", auth_change->old_mode, auth_change->new_mode);
-        break;
-    }
-    case SYSTEM_EVENT_STA_GOT_IP: {
-        system_event_sta_got_ip_t *got_ip = &event->event_info.got_ip;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_GOT_IP, ip:" IPSTR ", mask:" IPSTR ", gw:" IPSTR,
-            IP2STR(&got_ip->ip_info.ip),
-            IP2STR(&got_ip->ip_info.netmask),
-            IP2STR(&got_ip->ip_info.gw));
-        break;
-    }
-    case SYSTEM_EVENT_STA_LOST_IP: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_LOST_IP");
-        break;
-    }
-    case SYSTEM_EVENT_STA_WPS_ER_SUCCESS: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_SUCCESS");
-        break;
-    }
-    case SYSTEM_EVENT_STA_WPS_ER_FAILED: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_FAILED");
-        break;
-    }
-    case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_TIMEOUT");
-        break;
-    }
-    case SYSTEM_EVENT_STA_WPS_ER_PIN: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_PIN");
-        break;
-    }
-    case SYSTEM_EVENT_AP_START: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_START");
-        break;
-    }
-    case SYSTEM_EVENT_AP_STOP: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STOP");
-        break;
-    }
-    case SYSTEM_EVENT_AP_STACONNECTED: {
-        system_event_ap_staconnected_t *staconnected = &event->event_info.sta_connected;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STACONNECTED, mac:" MACSTR ", aid:%d", \
-                   MAC2STR(staconnected->mac), staconnected->aid);
-        break;
-    }
-    case SYSTEM_EVENT_AP_STADISCONNECTED: {
-        system_event_ap_stadisconnected_t *stadisconnected = &event->event_info.sta_disconnected;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STADISCONNECTED, mac:" MACSTR ", aid:%d", \
-                   MAC2STR(stadisconnected->mac), stadisconnected->aid);
-        break;
-    }
-    case SYSTEM_EVENT_AP_STAIPASSIGNED: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STAIPASSIGNED");
-        break;
-    }
-    case SYSTEM_EVENT_AP_PROBEREQRECVED: {
-        system_event_ap_probe_req_rx_t *ap_probereqrecved = &event->event_info.ap_probereqrecved;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_PROBEREQRECVED, rssi:%d, mac:" MACSTR, \
-                   ap_probereqrecved->rssi, \
-                   MAC2STR(ap_probereqrecved->mac));
-        break;
-    }
-    case SYSTEM_EVENT_GOT_IP6: {
-        ip6_addr_t *addr = &event->event_info.got_ip6.ip6_info.ip;
-        ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STA_GOT_IP6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-                 IP6_ADDR_BLOCK1(addr),
-                 IP6_ADDR_BLOCK2(addr),
-                 IP6_ADDR_BLOCK3(addr),
-                 IP6_ADDR_BLOCK4(addr),
-                 IP6_ADDR_BLOCK5(addr),
-                 IP6_ADDR_BLOCK6(addr),
-                 IP6_ADDR_BLOCK7(addr),
-                 IP6_ADDR_BLOCK8(addr));
-        break;
-    }
-    case SYSTEM_EVENT_ETH_START: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_START");
-        break;
-    }
-    case SYSTEM_EVENT_ETH_STOP: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_STOP");
-        break;
-    }
-    case SYSTEM_EVENT_ETH_CONNECTED: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_CONNECETED");
-        break;
-    }
-    case SYSTEM_EVENT_ETH_DISCONNECTED: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_DISCONNECETED");
-        break;
-    }
-    case SYSTEM_EVENT_ETH_GOT_IP: {
-        ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_GOT_IP");
-        break;
-    }
+        case SYSTEM_EVENT_WIFI_READY: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_WIFI_READY");
+            break;
+        }
+        case SYSTEM_EVENT_SCAN_DONE: {
+            system_event_sta_scan_done_t *scan_done = &event->event_info.scan_done;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_SCAN_DONE, status:%d, number:%d",  scan_done->status, scan_done->number);
+            break;
+        }
+        case SYSTEM_EVENT_STA_START: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_START");
+            break;
+        }
+        case SYSTEM_EVENT_STA_STOP: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_STOP");
+            break;
+        }
+        case SYSTEM_EVENT_STA_CONNECTED: {
+            system_event_sta_connected_t *connected = &event->event_info.connected;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_CONNECTED, ssid:%s, ssid_len:%d, bssid:" MACSTR ", channel:%d, authmode:%d", \
+                       connected->ssid, connected->ssid_len, MAC2STR(connected->bssid), connected->channel, connected->authmode);
+            break;
+        }
+        case SYSTEM_EVENT_STA_DISCONNECTED: {
+            system_event_sta_disconnected_t *disconnected = &event->event_info.disconnected;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_DISCONNECTED, ssid:%s, ssid_len:%d, bssid:" MACSTR ", reason:%d", \
+                       disconnected->ssid, disconnected->ssid_len, MAC2STR(disconnected->bssid), disconnected->reason);
+            break;
+        }
+        case SYSTEM_EVENT_STA_AUTHMODE_CHANGE: {
+            system_event_sta_authmode_change_t *auth_change = &event->event_info.auth_change;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_AUTHMODE_CHNAGE, old_mode:%d, new_mode:%d", auth_change->old_mode, auth_change->new_mode);
+            break;
+        }
+        case SYSTEM_EVENT_STA_GOT_IP: {
+            system_event_sta_got_ip_t *got_ip = &event->event_info.got_ip;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_GOT_IP, ip:" IPSTR ", mask:" IPSTR ", gw:" IPSTR,
+                IP2STR(&got_ip->ip_info.ip),
+                IP2STR(&got_ip->ip_info.netmask),
+                IP2STR(&got_ip->ip_info.gw));
+            break;
+        }
+        case SYSTEM_EVENT_STA_LOST_IP: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_LOST_IP");
+            break;
+        }
+        case SYSTEM_EVENT_STA_WPS_ER_SUCCESS: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_SUCCESS");
+            break;
+        }
+        case SYSTEM_EVENT_STA_WPS_ER_FAILED: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_FAILED");
+            break;
+        }
+        case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_TIMEOUT");
+            break;
+        }
+        case SYSTEM_EVENT_STA_WPS_ER_PIN: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_STA_WPS_ER_PIN");
+            break;
+        }
+        case SYSTEM_EVENT_AP_START: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_START");
+            break;
+        }
+        case SYSTEM_EVENT_AP_STOP: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STOP");
+            break;
+        }
+        case SYSTEM_EVENT_AP_STACONNECTED: {
+            system_event_ap_staconnected_t *staconnected = &event->event_info.sta_connected;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STACONNECTED, mac:" MACSTR ", aid:%d", \
+                       MAC2STR(staconnected->mac), staconnected->aid);
+            break;
+        }
+        case SYSTEM_EVENT_AP_STADISCONNECTED: {
+            system_event_ap_stadisconnected_t *stadisconnected = &event->event_info.sta_disconnected;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STADISCONNECTED, mac:" MACSTR ", aid:%d", \
+                       MAC2STR(stadisconnected->mac), stadisconnected->aid);
+            break;
+        }
+        case SYSTEM_EVENT_AP_STAIPASSIGNED: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STAIPASSIGNED");
+            break;
+        }
+        case SYSTEM_EVENT_AP_PROBEREQRECVED: {
+            system_event_ap_probe_req_rx_t *ap_probereqrecved = &event->event_info.ap_probereqrecved;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_PROBEREQRECVED, rssi:%d, mac:" MACSTR, \
+                       ap_probereqrecved->rssi, \
+                       MAC2STR(ap_probereqrecved->mac));
+            break;
+        }
+        case SYSTEM_EVENT_GOT_IP6: {
+            ip6_addr_t *addr = &event->event_info.got_ip6.ip6_info.ip;
+            ESP_LOGD(TAG, "SYSTEM_EVENT_AP_STA_GOT_IP6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+                     IP6_ADDR_BLOCK1(addr),
+                     IP6_ADDR_BLOCK2(addr),
+                     IP6_ADDR_BLOCK3(addr),
+                     IP6_ADDR_BLOCK4(addr),
+                     IP6_ADDR_BLOCK5(addr),
+                     IP6_ADDR_BLOCK6(addr),
+                     IP6_ADDR_BLOCK7(addr),
+                     IP6_ADDR_BLOCK8(addr));
+            break;
+        }
+        case SYSTEM_EVENT_ETH_START: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_START");
+            break;
+        }
+        case SYSTEM_EVENT_ETH_STOP: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_STOP");
+            break;
+        }
+        case SYSTEM_EVENT_ETH_CONNECTED: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_CONNECETED");
+            break;
+        }
+        case SYSTEM_EVENT_ETH_DISCONNECTED: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_DISCONNECETED");
+            break;
+        }
+        case SYSTEM_EVENT_ETH_IPASSIGNED: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_IPASSIGNED");
+            break;
+        }
+        case SYSTEM_EVENT_ETH_GOT_IP: {
+            ESP_LOGD(TAG, "SYSTEM_EVENT_ETH_GOT_IP");
+            break;
+        }
 
-    default: {
-        ESP_LOGW(TAG, "unexpected system event %d!", event->event_id);
-        break;
-    }
+        default: {
+            ESP_LOGW(TAG, "unexpected system event %d!", event->event_id);
+            break;
+        }
     }
 
     return ESP_OK;

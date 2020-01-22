@@ -293,6 +293,11 @@ esp_err_t tcpip_adapter_start(tcpip_adapter_if_t tcpip_if, uint8_t *mac, tcpip_a
         
         dhcps_start(esp_netif[tcpip_if], ip_info->ip);
 
+        //
+        // Assign this interface to be the singlton DHCP interface.
+        //
+        dhcps_if = tcpip_if;
+
         ESP_LOGD(TAG, "dhcp server start:(ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR ")",
                IP2STR(&ip_info->ip), IP2STR(&ip_info->netmask), IP2STR(&ip_info->gw));
 
