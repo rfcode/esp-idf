@@ -1147,9 +1147,26 @@ void dhcps_start(struct netif *netif, ip4_addr_t ip)
         udp_remove(apnetif->dhcps_pcb);
     }
 
-    pcb_dhcps = udp_new();
+    //
+    // Adding guard to not reallocate this pointer
+    // -mmoreno
+    //
+    if (NULL == pcb_dhcps)
+    {
+        pcb_dhcps = udp_new();
+    }
 
-    if (pcb_dhcps == NULL || ip4_addr_isany_val(ip)) {
+    //
+    // I cannot find any reason that this message should be printf'd
+    // in the case that ip4_addr_isany_val(ip).  The following code 
+    // does not seem to make any checks for the ip to be zero or anything else.
+    //
+    // The printf is showing up due to changing IP address on the fly
+    // in implementing PDU autodetect, so it's just getting in the way
+    //
+    // -mmoreno
+    //
+    if (pcb_dhcps == NULL /* || ip4_addr_isany_val(ip) */) {
         printf("dhcps_start(): could not obtain pcb\n");
     }
 
