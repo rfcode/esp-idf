@@ -1208,6 +1208,11 @@ void dhcps_stop(struct netif *netif)
         udp_disconnect(apnetif->dhcps_pcb);
         udp_remove(apnetif->dhcps_pcb);
         apnetif->dhcps_pcb = NULL;
+
+        //
+        // Also need to NULL out this thing
+        //
+        pcb_dhcps = NULL;
     }
 
     list_node *pnode = NULL;

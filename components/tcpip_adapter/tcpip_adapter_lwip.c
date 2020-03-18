@@ -939,7 +939,7 @@ esp_err_t tcpip_adapter_dhcps_start(tcpip_adapter_if_t tcpip_if)
 
         if (p_netif != NULL && netif_is_up(p_netif)) {
             tcpip_adapter_ip_info_t default_ip;
-            tcpip_adapter_get_ip_info(ESP_IF_WIFI_AP, &default_ip);
+            tcpip_adapter_get_ip_info(tcpip_if, &default_ip);
             dhcps_start(p_netif, default_ip.ip);
             dhcps_status = TCPIP_ADAPTER_DHCP_STARTED;
             ESP_LOGD(TAG, "dhcp server start successfully");
