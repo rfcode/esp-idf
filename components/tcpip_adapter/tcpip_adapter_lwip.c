@@ -1074,12 +1074,21 @@ static esp_err_t tcpip_adapter_start_ip_lost_timer(tcpip_adapter_if_t tcpip_if)
     ESP_LOGD(TAG, "if%d start ip lost tmr: enter", tcpip_if);
 
     //
-    // TODO: Test this with ethernet, also, why is this a thing?
+    // Documentation for this is in esp-idf/components/tcpip_adapter/Kconfig
     //
-    //if (tcpip_if != TCPIP_ADAPTER_IF_STA) {
-    //    ESP_LOGD(TAG, "if%d start ip lost tmr: only sta support ip lost timer", tcpip_if);
-    //    return ESP_OK;
-    //}
+    // It apparently exists only to report SYSTEM_EVENT_STA_LOST_IP if the
+    // Wifi Station loses its IP and does not get another one within the timeout period
+    // This is only useful for DHCP client operation.  This may be something we
+    // need to address if DHCP client is to be used officially in the product.
+    // As of this writing we only use the DHCP client in a development setting.
+    //
+    // Setting CONFIG_IP_LOST_TIMER_INTERVAL=0 in sdkconfig to disable this function
+    // Either way, this code only supports the WiFi Station interface
+    //
+    if (tcpip_if != TCPIP_ADAPTER_IF_STA) {
+        ESP_LOGD(TAG, "if%d start ip lost tmr: only sta support ip lost timer", tcpip_if);
+        return ESP_OK;
+    }
 
     if (esp_ip_lost_timer[tcpip_if].timer_running) {
         ESP_LOGD(TAG, "if%d start ip lost tmr: already started", tcpip_if);
